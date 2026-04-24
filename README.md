@@ -4,8 +4,8 @@ This repository contains the computer codes associated with the manuscript: Foun
 
 ## PROGRAMS    
 
-·RCT-SAM.py: Implements the proposed RCT-SAM model and the fine-tuning procedure used in the manuscript.
-·SAM.py: Contains the basic functions and supporting modules required by the SAM-based segmentation workflow.
+·RCTSAM.py: Implements the proposed RCT-SAM model and the fine-tuning procedure used in the manuscript.
+·build_sam.py: Contains the basic functions and supporting modules required by the SAM-based segmentation workflow.
 ·pred.py: Performs prediction on new rock CT images using the trained RCT-SAM model and outputs the segmentation results.
 
 
