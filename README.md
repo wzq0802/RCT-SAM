@@ -1,21 +1,93 @@
 # Foundation Model-Based Rock CT Image Segmentation and Interpretable Mechanical Property Prediction from Learned Features
 
-This repository contains the computer codes associated with the manuscript: Foundation Model-Based Rock CT Image Segmentation and Interpretable Mechanical Property Prediction from Learned Features.
+This repository contains the computer codes associated with the manuscript:
 
-## PROGRAMS    
+**Foundation Model-Based Rock CT Image Segmentation and Interpretable Mechanical Property Prediction from Learned Features**
 
-·RCTSAM.py: Implements the proposed RCT-SAM model and the fine-tuning procedure used in the manuscript.
-·build_sam.py: Contains the basic functions and supporting modules required by the SAM-based segmentation workflow.
-·pred.py: Performs prediction on new rock CT images using the trained RCT-SAM model and outputs the segmentation results.
+The repository provides the implementation of the proposed RCT-SAM model, the LoRA-based fine-tuning procedure, prediction scripts, symbolic-regression analysis, and comparative segmentation models used in the manuscript.
 
+---
 
-## EXAMPLE
-Example
+## Repository Contents
 
-The repository contains all the codes required to reproduce the results presented in the manuscript, organized into different scripts. Example input images and output results are provided to demonstrate the workflow.
-Rock CT images used in the example are included in the dataset folder. These images are used to illustrate the segmentation performance of the proposed RCT-SAM model.
-RCT-SAM.py implements the proposed model and fine-tuning strategy described in the manuscript. It is used to train and adapt the SAM model for digital rock image segmentation.
-SAM.py contains the core functions and utility modules required for the SAM-based segmentation framework.
-pred.py is used to perform inference on new rock CT images and generate segmentation results.
-Example prediction results are saved in the Figures folder in .png format. These outputs can be used to visually compare segmentation performance.
-Users can run the example by executing the prediction script on the provided sample images. The results will be automatically saved in the corresponding output folder.
+The main programs and supporting files are organized as follows:
+
+### Proposed RCT-SAM model
+
+- `RCTSAM.py`  
+  Implements the proposed RCT-SAM model and the LoRA-based fine-tuning procedure for rock CT image segmentation.
+
+- `build_sam.py`  
+  Provides the basic functions and supporting modules required to construct the SAM-based image encoder, prompt encoder, and mask decoder.
+
+- `pred.py`  
+  Performs inference on new rock CT images using a trained RCT-SAM model and generates segmentation results.
+
+---
+
+### Comparative segmentation models
+
+- `DMTNN.py`  
+  Implements the DMTNN-based digital rock image segmentation model used for comparison.
+
+- `DMTNN_train.py`  
+  Provides the training procedure for the DMTNN comparison model.
+
+- `generic_UNet.py`  
+  Contains the generic U-Net architecture and related network components.
+
+- `train_nnUNet.py`  
+  Provides the training script for the nnU-Net-based segmentation comparison.
+
+- `mix_transformer.py`  
+  Contains the Mix Transformer backbone used by the SegFormer-based segmentation model.
+
+- `segformer_head.py`  
+  Implements the segmentation head of the SegFormer model.
+
+- `train_segformer.py`  
+  Provides the training script for the SegFormer-based segmentation model.
+
+- `segformer_pred.py`  
+  Performs inference using the trained SegFormer model and generates segmentation predictions.
+
+---
+
+### Symbolic regression and feature analysis
+
+- `sis.py`  
+  Contains the symbolic-regression implementation used to analyze the learned RCT-SAM features and construct explicit prediction equations.
+
+---
+
+### Model files and supporting directories
+
+- `model/`  
+  Contains model-related files, pretrained weights, configuration files, or other supporting resources required by the segmentation models.
+
+- `dataset/`  
+  Contains the example rock CT images used to demonstrate the segmentation workflow.
+
+- `Figures/`  
+  Contains example prediction results and visualization outputs in `.png` format.
+
+---
+
+## Example
+
+The repository includes example input images and output results to demonstrate the proposed workflow.
+
+The example rock CT images are provided in the `dataset/` folder. These images can be used to test the inference procedure of the trained RCT-SAM model.
+
+The general workflow is:
+
+1. Prepare the rock CT images in the appropriate input folder.
+2. Load the trained RCT-SAM model.
+3. Run the prediction script.
+4. Save the predicted binary segmentation results in the output folder.
+5. Compare the predicted segmentation results with the provided examples in the `Figures/` folder.
+
+For example, the prediction script can be executed using:
+
+```bash
+python pred.py
