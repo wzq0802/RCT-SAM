@@ -9,7 +9,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
-# 从同目录下的文件中导入 SegFormer 架构组件
 from mix_transformer import mit_b0
 from segformer_head import SegFormerHead
 
@@ -19,13 +18,12 @@ torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 np.random.seed(seed)
 
-# 创建权重与日志输出目录
 save_dir = "SegFormer_Weights"
 os.makedirs(save_dir, exist_ok=True)
 
-data_path = os.listdir("data/50Berea/ori_npy")
+data_path = os.listdir("ori_npy")
 data_path.sort(key=lambda x: int(x[:-4]))
-data_path1 = os.listdir("data/50Berea/seg_npy")
+data_path1 = os.listdir("seg_npy")
 data_path1.sort(key=lambda x: int(x[:-4]))
 
 train_val_ratio = 0.8
@@ -36,13 +34,13 @@ val_paths = data_path[train_size:]
 
 
 def default_loader(path):
-    data_pil = np.load("data/50Berea/ori_npy/%s" % (path)).reshape((1, 256, 256))
+    data_pil = np.load("ori_npy/%s" % (path)).reshape((1, 256, 256))
     data_tensor = torch.tensor(data_pil, dtype=torch.float32)
     return data_tensor
 
 
 def default_loader1(path):
-    data_pil1 = np.load("data/50Berea/seg_npy/%s" % (path)).reshape((1, 256, 256))
+    data_pil1 = np.load("seg_npy/%s" % (path)).reshape((1, 256, 256))
     data_tensor1 = torch.tensor(data_pil1, dtype=torch.float32)
     return data_tensor1
 
@@ -71,14 +69,12 @@ trainloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 valloader = DataLoader(val_data, batch_size=batch_size)
 
 
-# ----------------- 构建完整的 SegFormer 模型 -----------------
 class CompleteSegFormer(nn.Module):
     def __init__(self, in_channels=1, num_classes=1):
         super().__init__()
-        # 1. 实例化 Backbone (将 in_chans 设为 1 以适配单通道灰度数据)
         self.backbone = mit_b0(in_chans=in_channels)
 
-        # 2. 实例化 Decode Head (对应 mit_b0 的多尺度输出通道配置)
+     
         self.decode_head = SegFormerHead(
             in_channels=[32, 64, 160, 256],
             feature_strides=[4, 8, 16, 32],
@@ -91,18 +87,14 @@ class CompleteSegFormer(nn.Module):
 
     def forward(self, x):
         h, w = x.shape[2:]
-        # 获取 4 个 stage 的特征图 outs: [C1, C2, C3, C4]
-        features = self.backbone(x)
-        # 解码融合 (输出尺寸为原图的 1/4)
+             features = self.backbone(x)
         out = self.decode_head(features)
-        # 上采样回原图分辨率 (256, 256)
         out = F.interpolate(out, size=(h, w), mode='bilinear', align_corners=False)
         return out
 
 
 net = CompleteSegFormer(in_channels=1, num_classes=1).cuda()
 
-# SegFormer 推荐使用 AdamW 优化器
 optimizer = optim.AdamW(net.parameters(), lr=0.0005, weight_decay=0.01)
 mse = nn.BCEWithLogitsLoss()
 
@@ -111,7 +103,6 @@ Loss_list = []
 Val_loss_list = []
 best_val_loss = float('inf')
 
-# ----------------- 训练与验证循环 -----------------
 for epoch in range(epochs):
     train_loss = 0
     val_loss = 0
@@ -135,11 +126,9 @@ for epoch in range(epochs):
             )
         )
 
-    # 记录训练损失
     avg_train_loss = train_loss / len(trainloader)
     Loss_list.append(avg_train_loss)
 
-    # 验证
     net.eval()
     with torch.no_grad():
         for data_val, label_val in valloader:
@@ -152,13 +141,11 @@ for epoch in range(epochs):
     Val_loss_list.append(avg_val_loss)
     print(f"--> Epoch {epoch + 1} Done | Train Loss: {avg_train_loss:.6f} | Val Loss: {avg_val_loss:.6f}")
 
-    # 保存最佳模型
     if avg_val_loss < best_val_loss:
         best_val_loss = avg_val_loss
         torch.save(net.state_dict(), f"{save_dir}/best_net.pth")
         print(f"--- Saved New Best Model (Val Loss: {best_val_loss:.6f}) ---")
 
-# 保存最终模型及损失
 torch.save(net.state_dict(), f"{save_dir}/net_final.pth")
 np.savetxt(f"{save_dir}/Train_Loss.csv", np.array(Loss_list))
 np.savetxt(f"{save_dir}/Val_Loss.csv", np.array(Val_loss_list))
