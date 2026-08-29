@@ -9,7 +9,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
-# 导入 Generic_UNet 架构
 from generic_UNet import Generic_UNet
 
 warnings.filterwarnings('ignore')
@@ -18,13 +17,13 @@ torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 np.random.seed(seed)
 
-# 创建权重与日志输出目录
+
 save_dir = "nnUNet_Weights"
 os.makedirs(save_dir, exist_ok=True)
 
-data_path = os.listdir("data/50Berea/ori_npy")
+data_path = os.listdir("ori_npy")
 data_path.sort(key=lambda x: int(x[:-4]))
-data_path1 = os.listdir("data/50Berea/seg_npy")
+data_path1 = os.listdir("seg_npy")
 data_path1.sort(key=lambda x: int(x[:-4]))
 
 train_val_ratio = 0.8
@@ -34,12 +33,12 @@ train_paths = data_path[:train_size]
 val_paths = data_path[train_size:]
 
 def default_loader(path):
-    data_pil = np.load("data/50Berea/ori_npy/%s" % (path)).reshape((1, 256, 256))
+    data_pil = np.load("ori_npy/%s" % (path)).reshape((1, 256, 256))
     data_tensor = torch.tensor(data_pil, dtype=torch.float32)
     return data_tensor
 
 def default_loader1(path):
-    data_pil1 = np.load("data/50Berea/seg_npy/%s" % (path)).reshape((1, 256, 256))
+    data_pil1 = np.load("seg_npy/%s" % (path)).reshape((1, 256, 256))
     data_tensor1 = torch.tensor(data_pil1, dtype=torch.float32)
     return data_tensor1
 
@@ -65,8 +64,6 @@ batch_size = 4
 trainloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 valloader = DataLoader(val_data, batch_size=batch_size)
 
-# ----------------- 实例化 2D nnU-Net (Generic_UNet) -----------------
-# 图像大小 256x256，设置下采样层数 num_pool=5，关闭 deep_supervision 保证单输出
 net = Generic_UNet(
     input_channels=1,
     base_num_features=32,
@@ -79,10 +76,9 @@ net = Generic_UNet(
     dropout_op=nn.Dropout2d,
     nonlin=nn.LeakyReLU,
     deep_supervision=False,
-    final_nonlin=lambda x: x  # 回归/MSE损失不加额外激活
+    final_nonlin=lambda x: x 
 ).cuda()
 
-# nnUNet 标准优化器配置 (SGD/AdamW 均可)
 optimizer = optim.AdamW(net.parameters(), lr=0.0005, weight_decay=1e-4)
 mse = nn.BCEWithLogitsLoss()
 
@@ -91,7 +87,6 @@ Loss_list = []
 Val_loss_list = []
 best_val_loss = float('inf')
 
-# ----------------- 训练与验证循环 -----------------
 for epoch in range(epochs):
     train_loss = 0
     val_loss = 0
@@ -115,11 +110,9 @@ for epoch in range(epochs):
             )
         )
 
-    # 记录训练损失
     avg_train_loss = train_loss / len(trainloader)
     Loss_list.append(avg_train_loss)
 
-    # 验证
     net.eval()
     with torch.no_grad():
         for data_val, label_val in valloader:
@@ -132,13 +125,11 @@ for epoch in range(epochs):
     Val_loss_list.append(avg_val_loss)
     print(f"--> Epoch {epoch + 1} Done | Train Loss: {avg_train_loss:.6f} | Val Loss: {avg_val_loss:.6f}")
 
-    # 保存最佳模型
     if avg_val_loss < best_val_loss:
         best_val_loss = avg_val_loss
         torch.save(net.state_dict(), f"{save_dir}/best_net.pth")
         print(f"--- Saved New Best Model (Val Loss: {best_val_loss:.6f}) ---")
 
-# 保存最终模型及损失
 torch.save(net.state_dict(), f"{save_dir}/net_final.pth")
 np.savetxt(f"{save_dir}/Train_Loss.csv", np.array(Loss_list))
 np.savetxt(f"{save_dir}/Val_Loss.csv", np.array(Val_loss_list))
