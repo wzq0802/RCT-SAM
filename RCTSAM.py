@@ -12,29 +12,29 @@ from torchvision import transforms
 from lora import Linear, MergedLinear
 warnings.filterwarnings("ignore")
 
-# 固定随机种子
+# Fix random seed
 seed = 82
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 np.random.seed(seed)
 
-# 数据路径
+# Data paths
 data_path = os.listdir("ori_npy")
 data_path.sort(key=lambda x: int(x[:-4]))
 data_path1 = os.listdir("seg_npy")
 data_path1.sort(key=lambda x: int(x[:-4]))
 
-# 训练验证划分
+# Train/validation split
 train_val_ratio = 0.8
 train_size = int(train_val_ratio * len(data_path))
 
 train_paths = data_path[:train_size]
 val_paths = data_path[train_size:]
 
-# 数据加载器
+# Data loaders
 def default_loader(path):
     data_pil = np.load(f"ori_npy/{path}").reshape((1, 256, 256))
-    data_tensor = torch.tensor(data_pil).type(torch.FloatTensor) / 255.0  # 归一化到 [0, 1]
+    data_tensor = torch.tensor(data_pil).type(torch.FloatTensor) / 255.0  # Normalize to [0, 1]
 
     data_tensor = data_tensor.repeat(3, 1, 1)  # [1, H, W] -> [3, H, W]
     transform = transforms.Resize((1024, 1024))
@@ -46,7 +46,7 @@ def default_loader1(path):
     data_tensor1 = torch.tensor(data_pil1).type(torch.FloatTensor)
     return data_tensor1
 
-# 自定义数据集
+# Custom dataset
 class NpyDataset(Dataset):
     def __init__(self, paths, loader=default_loader, loader1=default_loader1):
         self.images = paths
@@ -65,18 +65,18 @@ class NpyDataset(Dataset):
 def inject_lora_to_sam(sam_model, rank=4):
   
     for name, module in sam_model.image_encoder.named_children():
-        if isinstance(module, nn.ModuleList):  # 处理ViT的blocks
+        if isinstance(module, nn.ModuleList):  # Handle ViT blocks
             for block in module:
-                # 替换QKV投影层为MergedLinear
+                # Replace QKV projection layer with MergedLinear
                 block.attn.qkv = MergedLinear(
                     in_features=block.attn.qkv.in_features,
                     out_features=block.attn.qkv.out_features,
                     r=rank,
                     lora_alpha=16,
-                    enable_lora=[True, True, True],  # 同时启用Q/K/V的LoRA
+                    enable_lora=[True, True, True],  # Enable LoRA for Q/K/V simultaneously
                     merge_weights=False
                 )
-                # 修改MLP层
+                # Modify MLP layers
                 block.mlp.lin1 = Linear(
                     in_features=block.mlp.lin1.in_features,
                     out_features=block.mlp.lin1.out_features,
@@ -146,7 +146,7 @@ rock_sam = RCTSAM(
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, rock_sam.parameters()), lr=5e-4)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min", patience=10, factor=0.5)
 
-# 损失函数
+# Loss function
 bce_loss = nn.BCEWithLogitsLoss()
 
 def loss(pred, target):
@@ -154,7 +154,7 @@ def loss(pred, target):
     loss_bce = bce_loss(pred, target)
     return loss_bce
 
-# 数据加载
+# Data loading
 train_data = NpyDataset(train_paths)
 val_data = NpyDataset(val_paths)
 
@@ -162,15 +162,15 @@ batch_size = 1
 trainloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 valloader = DataLoader(val_data, batch_size=batch_size)
 
-# 训练参数
+# Training parameters
 epochs = 20
 best_val_loss = float("inf")
 
-# 保存损失值
+# Store loss values
 Loss_list = []
 Val_loss_list = []
 
-# 创建保存目录
+# Create save directory
 os.makedirs("model", exist_ok=True)
 
 for epoch in range(epochs):
@@ -205,7 +205,7 @@ for epoch in range(epochs):
 
     print(f"Epoch {epoch + 1}/{epochs} | Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f}")
 
-    # 保存最佳模型
+    # Save best model
     if val_loss < best_val_loss:
         best_val_loss = val_loss
         torch.save(rock_sam.state_dict(), "model/best_model.pth")
@@ -214,7 +214,7 @@ for epoch in range(epochs):
 
     scheduler.step(val_loss)
 
-# 保存最终模型
+# Save final model
 torch.save(rock_sam.state_dict(), "model/sam/final_model.pth")
 print("Final model saved")
 
