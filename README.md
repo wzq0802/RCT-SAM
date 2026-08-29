@@ -1,4 +1,7 @@
 # Foundation Model-Based Rock CT Image Segmentation and Interpretable Mechanical Property Prediction from Learned Features
+## Model Architecture
+The overall architecture of the proposed RCT-SAM framework is shown below.
+![Overall architecture of the proposed RCT-SAM framework](model.png)
 
 This repository contains the computer codes associated with the manuscript:
 
@@ -58,18 +61,7 @@ The main programs and supporting files are organized as follows:
 - `sis.py`  
   Contains the symbolic-regression implementation used to analyze the learned RCT-SAM features and construct explicit prediction equations.
 
----
 
-### Model files and supporting directories
-
-- `model/`  
-  Contains model-related files, pretrained weights, configuration files, or other supporting resources required by the segmentation models.
-
-- `dataset/`  
-  Contains the example rock CT images used to demonstrate the segmentation workflow.
-
-- `Figures/`  
-  Contains example prediction results and visualization outputs in `.png` format.
 
 ---
 
