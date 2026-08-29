@@ -7,34 +7,34 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 
-# 添加中文字体支持
-plt.rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体
-plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
-# 固定随机种子
+# Add Chinese font support
+plt.rcParams['font.sans-serif'] = ['SimHei']  # Use black font
+plt.rcParams['axes.unicode_minus'] = False  # Fix minus sign display issue
+# Fix random seed
 seed = 82
 np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 
 device = "cpu"  # "cuda" if torch.cuda.is_available() else "cpu"
-print(f"🖥️ 使用设备: {device}")
+print(f"🖥️ Using device: {device}")
 
-# ===== 绘图函数 =====
+# ===== Plotting function =====
 def plot_predictions(y_true, y_pred, title="Prediction vs True", out_file=None):
     plt.figure(figsize=(6, 6))
     plt.scatter(y_true, y_pred, c='blue', alpha=0.6, edgecolors='k')
     plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'r--', lw=2)
-    plt.xlabel("实际值", fontsize=12)
-    plt.ylabel("预测值", fontsize=12)
+    plt.xlabel("Actual", fontsize=12)
+    plt.ylabel("Predicted", fontsize=12)
     plt.title(title, fontsize=14)
     plt.grid(True, linestyle='--', alpha=0.5)
     plt.tight_layout()
     if out_file:
         plt.savefig(out_file, dpi=300)
-        print(f"✅ 图像已保存到 {out_file}")
+        print(f"✅ Image saved to {out_file}")
     plt.show()
 
-# ===== 安全拟合函数 =====
+# ===== Safe fitting function =====
 def safe_fit(sisso_model):
     try:
         results = sisso_model.fit()
@@ -46,12 +46,12 @@ def safe_fit(sisso_model):
         else:
             return 0.1, "f1", 0.5, "f1"
     except Exception as e:
-        print(f"❌ SISSO 拟合错误: {e}")
+        print(f"❌ SISSO fit error: {e}")
         import traceback
         traceback.print_exc()
         return 0.1, "f1", 0.5, "f1"
 
-# ===== 安全预测函数 =====
+# ===== Safe prediction function =====
 def safe_evaluate_equation(equation, X, y, feature_names):
     n_samples = X.shape[0]
     y_pred = np.zeros(n_samples)
@@ -78,46 +78,44 @@ def safe_evaluate_equation(equation, X, y, feature_names):
     return rmse, r2, y_pred
 
 def main():
-    excel_file = "new/Bulk.xlsx"  # 请替换为实际路径
+    excel_file = "Bulk.xlsx"  # Please replace with the actual path
 
     try:
-        # ===== 加载数据 =====
+        # ===== Load data =====
         df = pd.read_excel(excel_file)
-        print(f"✅ 数据加载成功, 形状: {df.shape}")
+        print(f"✅ Data loaded successfully, shape: {df.shape}")
 
-        # 第一列为目标变量，其余列为输入特征
+        # First column is the target variable, the rest are input features
         y = df.iloc[:, 0].values.astype(np.float64)
         X = df.iloc[:, 1:].values.astype(np.float64)
         feature_names = df.columns[1:].tolist()
 
-        # 预处理特征名：将连字符等非法字符替换为下划线
+        # Preprocess feature names: replace illegal characters such as hyphens with underscores
         safe_feature_names = [name.replace('-', '_') for name in feature_names]
 
-        # 更新 DataFrame 列名
+        # Update DataFrame column names
         df.columns = [df.columns[0]] + safe_feature_names
 
-        # 使用安全的特征名
+        # Use safe feature names
         feature_names = safe_feature_names
 
         if np.isnan(X).any() or np.isnan(y).any():
-            raise ValueError("数据中存在 NaN 或 Inf，请先处理")
+            raise ValueError("Data contains NaN or Inf, please clean first")
 
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=seed
         )
-        print(f"📘 训练集: {X_train.shape[0]}，📗 测试集: {X_test.shape[0]}")
+        print(f"📘 Training set: {X_train.shape[0]}，📗 Test set: {X_test.shape[0]}")
 
         df_train = pd.DataFrame(np.column_stack([y_train, X_train]),
                                 columns=["y"] + feature_names)
 
         operators = ['+', '-', '*', '/']
-        # operators = ['+', '-', '*', '/', 'exp', 'pow(1/2)', 'pow(1/3)', 'log', 'ln', '^-1', 'pow(2)', 'pow(3)',
-        #                                           'exp(-1)']
         n_expansion = 2
         n_term = 3
         k = 20
 
-        print("\n🚀 开始训练 SISSO 模型...")
+        print("\n🚀 Starting SISSO model training...")
         sm_model = SissoModel(
             df_train,
             operators,
@@ -132,22 +130,22 @@ def main():
         )
 
         train_rmse, equation, train_r2, _ = safe_fit(sm_model)
-        print(f"\n✅ 训练完成！")
-        print(f"📐 最优方程: {equation}")
-        print(f"训练集性能: RMSE={train_rmse:.4f}, R²={train_r2:.4f}")
+        print(f"\n✅ Training complete!")
+        print(f"📐 Best equation: {equation}")
+        print(f"Training set performance: RMSE={train_rmse:.4f}, R²={train_r2:.4f}")
 
-        print("\n🔍 测试集验证中...")
+        print("\n🔍 Validating on test set...")
         test_rmse, test_r2, y_test_pred = safe_evaluate_equation(equation, X_test, y_test, feature_names)
-        print(f"测试集性能: RMSE={test_rmse:.4f}, R²={test_r2:.4f}")
+        print(f"Test set performance: RMSE={test_rmse:.4f}, R²={test_r2:.4f}")
 
         r2_gap = train_r2 - test_r2
-        print(f"\n📊 R² 差距: {r2_gap:.4f}")
+        print(f"\n📊 R² gap: {r2_gap:.4f}")
         if abs(r2_gap) < 0.05:
-            print("🎯 模型泛化能力优秀")
+            print("🎯 Model generalization is excellent")
         elif r2_gap > 0.1:
-            print("⚠️ 可能过拟合")
+            print("⚠️ Possible overfitting")
         else:
-            print("✅ 模型性能稳定")
+            print("✅ Model performance is stable")
 
         train_pred = np.array([
             eval(equation, {"__builtins__": {},
@@ -156,15 +154,15 @@ def main():
                              "exp": np.exp, "abs": np.abs, "pow": pow})
             for i in range(len(y_train))
         ])
-        plot_predictions(y_train, train_pred, title="训练集预测", out_file="train_scatter.png")
+        plot_predictions(y_train, train_pred, title="Training Set Prediction", out_file="train_scatter.png")
 
-        plot_predictions(y_test, y_test_pred, title="测试集预测", out_file="test_scatter.png")
+        plot_predictions(y_test, y_test_pred, title="Test Set Prediction", out_file="test_scatter.png")
 
 
     except FileNotFoundError:
-        print(f"❌ 找不到文件 {excel_file}，请确认路径")
+        print(f"❌ File {excel_file} not found, please check the path")
     except Exception as e:
-        print(f"❌ 程序错误: {e}")
+        print(f"❌ Program error: {e}")
         import traceback
         traceback.print_exc()
 
